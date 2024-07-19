@@ -1,101 +1,60 @@
-import express, { Request, Response } from 'express';
-import { Pool } from 'pg';
+import express, { Request, Response } from "express";
+import { createClient } from "redis";
 
-// Set up the Express app
+// Create a new Express application
 const app = express();
 const port = 3000;
 
-// Set up the PostgreSQL connection pool
-// const pool = new Pool({
-//   user: '',
-//   host: 'localhost',
-//   database: 'test_postgis_db_for_water_wells',
-//   password: '',
-//   port: 5432,
-// });
+// Middleware to parse JSON
+app.use(express.json());
 
-const fs = require('fs');
+// Create a Redis client
+const client = createClient({
+    url: "redis://localhost:6379",
+});
 
-// Micro database
-// const pool = new Pool({
-//     user: 'postgres',
-//     host: 'well-water-visualization-db-postgis-1.cn2uii4ioy0n.us-east-2.rds.amazonaws.com',
-//     database: 'postgres',
-//     password: 'FtJ?bO?IG#cj]1zuk38_}L+]d$xo',
-//     port: 5432,
-//     ssl: {
-//         rejectUnauthorized: false, // You can set this to true and provide CA cert for better security
-//         ca: fs.readFileSync('us-east-2-bundle.pem').toString(), // Path to the downloaded RDS root certificate
-//     },
-//   });
+// Handle Redis connection errors
+client.on("error", (err) => {
+    console.error("Redis error:", err);
+});
 
-// Dev database
-// const pool = new Pool({
-//     user: 'postgres',
-//     host: 'database-2.cn2uii4ioy0n.us-east-2.rds.amazonaws.com',
-//     database: 'postgres',
-//     password: '*c[:DqqjiGxm9mU-lYgp(47*?rL_',
-//     port: 5432,
-//     ssl: {
-//         rejectUnauthorized: false, // You can set this to true and provide CA cert for better security
-//         ca: fs.readFileSync('us-east-2-bundle.pem').toString(), // Path to the downloaded RDS root certificate
-//     },
-//   });
+// Connect to Redis
+client.connect().catch(console.error);
 
-// Other dev data but a little closer
-// HOST = "database-3-dev-n-california.cdu80o26o3iu.us-west-1.rds.amazonaws.com"
-// DATABASE = "postgres"
-// USER = "postgres"
-// PASSWORD = "]URiwwLCZq80aaJsE:gRT0~y$zDc"
-const pool = new Pool({
-    user: 'postgres',
-    host: 'database-3-dev-n-california.cdu80o26o3iu.us-west-1.rds.amazonaws.com',
-    database: 'postgres',
-    password: ']URiwwLCZq80aaJsE:gRT0~y$zDc',
-    port: 5432,
-    ssl: {
-        rejectUnauthorized: false, // You can set this to true and provide CA cert for better security
-        ca: fs.readFileSync('us-west-1-bundle.pem').toString(), // Path to the downloaded RDS root certificate
-    },
-  });
-
-app.get('/water_wells', async (req: Request, res: Response) => {
+// Route to get all keys (indices)
+app.get("/keys", async (req: Request, res: Response) => {
     try {
-      const query = `
-        SELECT water_well.well_id, water_well.well_name, water_well.longitude, water_well.latitude, water_well.depth, water_well.water_present, well_lithology.lithology
-        FROM water_well
-        JOIN well_lithology ON water_well.well_id = well_lithology.well_id
-        WHERE ST_Intersects(
-            water_well.location,
-            ST_MakeEnvelope(-120.639024, 34.761779, -120.000, 35.56163, 4326)::geography
-        );
-      `;
-
-    //   const query = `
-    //   SELECT water_well.well_id, water_well.well_name, water_well.longitude, water_well.latitude, water_well.depth, water_well.water_present, well_lithology.lithology
-    //     FROM water_well
-    //     JOIN well_lithology ON water_well.well_id = well_lithology.well_id
-    //     WHERE ST_Contains(
-    //         ST_MakeEnvelope(-119.253229, 34.425619, -118.378889, 34.047725, 4326),
-    //         water_well.location
-    //     );
-    // `;
-
-      const result = await pool.query(query);
-      res.json(result.rows);
-    } catch (error) {
-      // Check if the error is an instance of Error and has a message property
-      if (error instanceof Error) {
-        res.status(500).json({ error: error.message });
-      } else {
-        // If the error is not an instance of Error, respond with a generic error message
-        res.status(500).json({ error: 'An unexpected error occurred' });
-      }
+        const keys = await client.keys("*");
+        res.send(keys);
+    } catch (error: any) {
+        res.status(500).send(error.toString());
     }
-  });
+});
+
+// Route to get a JSON value by key using POST
+app.post("/keys", async (req: Request, res: Response) => {
+    const key = req.body.key;
+    if (!key) {
+        return res.status(400).send("Key is required");
+    }
+    try {
+        const value = await client.get(key);
+        if (!value) {
+            return res.status(404).send("Key not found");
+        }
+        // Try to parse JSON, if it fails, return the string
+        try {
+            const jsonValue = JSON.parse(value);
+            res.send(jsonValue);
+        } catch (e) {
+            res.send(value);
+        }
+    } catch (error: any) {
+        res.status(500).send(error.toString());
+    }
+});
 
 // Start the server
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+    console.log(`Server is running on http://localhost:${port}`);
 });
-

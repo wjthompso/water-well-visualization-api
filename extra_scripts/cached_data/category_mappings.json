@@ -1,0 +1,36 @@
+{
+    "short_to_long_map": {
+        "CARB": "12 Mostly carbonate rock (e.g., limestone, dolomite)",
+        "CFGP": "11 Consolidated: Fine grained low-permeability (e.g., siltstone, shale, chert)",
+        "UMIX": "3 Unconsolidated: Mixture of coarse and fine grained (e.g., undifferentiated soil)",
+        "UCG": "1 Unconsolidated: Coarse-grained material(e.g., sand, gravel)",
+        "UFG": "5 Unconsolidated: Fine grained material (e.g., silt, clay)",
+        "CCG": "7 Consolidated: Coarse-grained material(e.g., sandstone, conglomerate)",
+        "UMC": "2 Unconsolidated: Mostly coarse-grained (e.g., sand, gravel) some fine-grained material",
+        "UFC": "4 Unconsolidated: Mostly fine-grained (e.g., silt, clay) some coarse-grained material",
+        "EVAP": "15 Evaporites (e.g., gypsum)",
+        "ENDO": "13 Endogenous (metamorphic rocks, granite, etc.)",
+        "CMIX": "9 Consolidated: Mixture of coarse and fine grained",
+        "CMFC": "10 Consolidated: Mostly fine-grained low-permeability (e.g., siltstone, shale, chert) some coarse grained material",
+        "CMCG": "8 Consolidated: Mostly coarse-grained (e.g., sandstone, conglomerate) some fine grained material",
+        "VOLC": "14 Volcanic (rhyolite, basalt)",
+        "TILL": "6 Till/drift"
+    },
+    "long_to_short_map": {
+        "12 Mostly carbonate rock (e.g., limestone, dolomite)": "CARB",
+        "11 Consolidated: Fine grained low-permeability (e.g., siltstone, shale, chert)": "CFGP",
+        "3 Unconsolidated: Mixture of coarse and fine grained (e.g., undifferentiated soil)": "UMIX",
+        "1 Unconsolidated: Coarse-grained material(e.g., sand, gravel)": "UCG",
+        "5 Unconsolidated: Fine grained material (e.g., silt, clay)": "UFG",
+        "7 Consolidated: Coarse-grained material(e.g., sandstone, conglomerate)": "CCG",
+        "2 Unconsolidated: Mostly coarse-grained (e.g., sand, gravel) some fine-grained material": "UMC",
+        "4 Unconsolidated: Mostly fine-grained (e.g., silt, clay) some coarse-grained material": "UFC",
+        "15 Evaporites (e.g., gypsum)": "EVAP",
+        "13 Endogenous (metamorphic rocks, granite, etc.)": "ENDO",
+        "9 Consolidated: Mixture of coarse and fine grained": "CMIX",
+        "10 Consolidated: Mostly fine-grained low-permeability (e.g., siltstone, shale, chert) some coarse grained material": "CMFC",
+        "8 Consolidated: Mostly coarse-grained (e.g., sandstone, conglomerate) some fine grained material": "CMCG",
+        "14 Volcanic (rhyolite, basalt)": "VOLC",
+        "6 Till/drift": "TILL"
+    }
+}
