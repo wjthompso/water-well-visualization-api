@@ -1,7 +1,7 @@
 import json
 import redis
 
-def upload_json_to_redis(file_path, redis_host='localhost', redis_port=6379, redis_password=None):
+def upload_json_to_redis(file_path, redis_host='127.0.0.1', redis_port=6380, redis_password=None):
     # Connect to Redis
     r = redis.StrictRedis(host=redis_host, port=redis_port, password=redis_password, decode_responses=True)
     

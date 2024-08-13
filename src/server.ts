@@ -1,9 +1,13 @@
+import cors from "cors";
 import express, { Request, Response } from "express";
 import { createClient } from "redis";
 
 // Create a new Express application
 const app = express();
 const port = 3000;
+
+// Middleware to enable CORS
+app.use(cors());
 
 // Middleware to parse JSON
 app.use(express.json());
@@ -21,11 +25,46 @@ client.on("error", (err) => {
 // Connect to Redis
 client.connect().catch(console.error);
 
-// Route to get all keys (indices)
+// Interface for Chunk
+interface Chunk {
+    topLeft: {
+        lat: number;
+        lon: number;
+    };
+    bottomRight: {
+        lat: number;
+        lon: number;
+    };
+}
+
+// Function to parse the key into a Chunk
+const parseKeyToChunk = (key: string): Chunk | null => {
+    const match = key.match(
+        /location:\(([^,]+), ([^,]+)\)-\(([^,]+), ([^,]+)\)/
+    );
+    if (!match) {
+        return null;
+    }
+    return {
+        topLeft: {
+            lat: parseFloat(match[1]),
+            lon: parseFloat(match[2]),
+        },
+        bottomRight: {
+            lat: parseFloat(match[3]),
+            lon: parseFloat(match[4]),
+        },
+    };
+};
+
+// Route to get all keys (indices) and return in Chunk[] format
 app.get("/keys", async (req: Request, res: Response) => {
     try {
         const keys = await client.keys("*");
-        res.send(keys);
+        const chunks = keys
+            .map(parseKeyToChunk)
+            .filter((chunk): chunk is Chunk => chunk !== null);
+        res.send(chunks);
     } catch (error: any) {
         res.status(500).send(error.toString());
     }
