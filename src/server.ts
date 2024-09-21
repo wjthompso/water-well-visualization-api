@@ -124,9 +124,19 @@ const shutdown = () => {
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
+// Define allowed origins (replace with your actual domain)
+const allowedOrigins = ["https://waterwelldepthmap.bren.ucsb.edu/", "http://localhost:3000", "http://localhost:4000"]; 
+
 // Endpoint to handle Google Places Autocomplete API requests
 app.get("/places-autocomplete", async (req: Request, res: Response) => {
     const searchQuery = req.query.input;
+
+    // Check the Origin or Referer header
+    const origin = req.headers.origin || req.headers.referer;
+
+    if (!origin || !allowedOrigins.some((allowedOrigin) => origin.startsWith(allowedOrigin))) {
+        return res.status(403).send("Access denied: Unauthorized origin");
+    }
 
     if (!searchQuery || typeof searchQuery !== "string") {
         return res.status(400).send("Input query parameter is required");
