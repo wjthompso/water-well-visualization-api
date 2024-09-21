@@ -1,6 +1,8 @@
 import cors from "cors";
+import dotenv from "dotenv";
 import express, { Request, Response } from "express";
 import { createClient } from "redis";
+dotenv.config();
 
 // Create a new Express application
 const app = express();
@@ -90,6 +92,35 @@ app.post("/keys", async (req: Request, res: Response) => {
         }
     } catch (error: any) {
         res.status(500).send(error.toString());
+    }
+});
+
+// Endpoint to handle Google Places Autocomplete API requests
+app.get("/api/places-autocomplete", async (req: Request, res: Response) => {
+    const searchQuery = req.query.input;
+
+    if (!searchQuery || typeof searchQuery !== "string") {
+        return res.status(400).send("Input query parameter is required");
+    }
+
+    try {
+        const response = await fetch(
+            `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
+                searchQuery
+            )}&key=${process.env.GOOGLE_API_KEY}`
+        );
+
+        if (!response.ok) {
+            return res
+                .status(response.status)
+                .send(`Error fetching from Google Places API: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        res.json(data);
+    } catch (error) {
+        console.error("Error fetching from Google Places API:", error);
+        res.status(500).send("Internal server error");
     }
 });
 
