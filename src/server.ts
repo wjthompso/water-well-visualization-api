@@ -163,6 +163,49 @@ app.get("/places-autocomplete", async (req: Request, res: Response) => {
     }
 });
 
+// Endpoint to handle Google Places Details API requests
+app.get("/place-details", async (req: Request, res: Response) => {
+    const placeId = req.query.place_id;
+
+    // Check the Origin or Referer header
+    const origin = req.headers.origin || req.headers.referer;
+
+    if (!origin || !allowedOrigins.some((allowedOrigin) => origin.startsWith(allowedOrigin))) {
+        return res.status(403).send("Access denied: Unauthorized origin");
+    }
+
+    if (!placeId || typeof placeId !== "string") {
+        return res.status(400).send("place_id query parameter is required");
+    }
+
+    try {
+        const response = await fetch(
+            `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(
+                placeId
+            )}&key=${process.env.GOOGLE_API_KEY}`
+        );
+
+        if (!response.ok) {
+            return res
+                .status(response.status)
+                .send(`Error fetching from Google Places Details API: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        if (data.status === "OK") {
+            res.json(data.result);
+        } else {
+            console.error("Error fetching place details:", data.status);
+            res.status(500).send(`Error fetching place details: ${data.status}`);
+        }
+    } catch (error) {
+        console.error("Error fetching from Google Places Details API:", error);
+        res.status(500).send("Internal server error");
+    }
+});
+
+
 // Start the server
 app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
