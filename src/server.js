@@ -15,16 +15,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const cors_1 = __importDefault(require("cors"));
 const express_1 = __importDefault(require("express"));
 const redis_1 = require("redis");
+const dotenv_1 = __importDefault(require("dotenv"));
+// Load environment variables from a .env file
+dotenv_1.default.config();
 // Create a new Express application
 const app = (0, express_1.default)();
-const port = 3000;
+const port = process.env.PORT || 3000;
 // Middleware to enable CORS
 app.use((0, cors_1.default)());
 // Middleware to parse JSON
 app.use(express_1.default.json());
 // Create a Redis client
 const client = (0, redis_1.createClient)({
-    url: "redis://localhost:6379",
+    url: process.env.REDIS_URL || "redis://localhost:6379",
 });
 // Handle Redis connection errors
 client.on("error", (err) => {
@@ -50,7 +53,7 @@ const parseKeyToChunk = (key) => {
     };
 };
 // Route to get all keys (indices) and return in Chunk[] format
-app.get("/keys", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.get("/keys", (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const keys = yield client.keys("*");
         const chunks = keys
@@ -59,11 +62,11 @@ app.get("/keys", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         res.send(chunks);
     }
     catch (error) {
-        res.status(500).send(error.toString());
+        next(error);
     }
 }));
 // Route to get a JSON value by key using POST
-app.post("/keys", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.post("/keys", (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const key = req.body.key;
     if (!key) {
         return res.status(400).send("Key is required");
@@ -73,7 +76,6 @@ app.post("/keys", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         if (!value) {
             return res.status(404).send("Key not found");
         }
-        // Try to parse JSON, if it fails, return the string
         try {
             const jsonValue = JSON.parse(value);
             res.send(jsonValue);
@@ -83,9 +85,26 @@ app.post("/keys", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         }
     }
     catch (error) {
-        res.status(500).send(error.toString());
+        next(error);
     }
 }));
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+});
+// Graceful shutdown
+const shutdown = () => {
+    client.quit().then(() => {
+        console.log("Redis client disconnected.");
+        process.exit(0);
+    }).catch((err) => {
+        console.error("Error during Redis client shutdown:", err);
+        process.exit(1);
+    });
+};
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 // Start the server
 app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
