@@ -125,7 +125,7 @@ process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 // Endpoint to handle Google Places Autocomplete API requests
-app.get("/api/places-autocomplete", async (req: Request, res: Response) => {
+app.get("/places-autocomplete", async (req: Request, res: Response) => {
     const searchQuery = req.query.input;
 
     if (!searchQuery || typeof searchQuery !== "string") {
