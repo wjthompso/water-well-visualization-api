@@ -1,7 +1,8 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express, { NextFunction, Request, Response } from "express";
-import path from "path"; // Import path module
+import fs from "fs"; // Import fs for file operations
+import path from "path";
 import { createClient } from "redis";
 
 // Load environment variables from a .env file
@@ -30,7 +31,7 @@ client.on("error", (err) => {
 // Connect to Redis
 client.connect().catch(console.error);
 
-// Interface for Chunk
+// Interface for Chunk (TypeScript Specific)
 interface Chunk {
     topLeft: {
         lat: number;
@@ -63,11 +64,17 @@ const parseKeyToChunk = (key: string): Chunk | null => {
 };
 
 // Used to verify server
-app.get("/.well-known/pki-validation/46B38693C6AFEAE0600108325FE8A834.txt", (req: Request, res: Response) => {
-    const filePath = path.join(__dirname, "../../.well-known/pki-validation/", "46B38693C6AFEAE0600108325FE8A834.txt");
-    res.sendFile(filePath);
-});
-
+app.get(
+    "/.well-known/pki-validation/46B38693C6AFEAE0600108325FE8A834.txt",
+    (req: Request, res: Response) => {
+        const filePath = path.join(
+            __dirname,
+            "../../.well-known/pki-validation/",
+            "46B38693C6AFEAE0600108325FE8A834.txt"
+        );
+        res.sendFile(filePath);
+    }
+);
 
 // Route to get all keys (indices) and return in Chunk[] format
 app.get("/keys", async (req: Request, res: Response, next: NextFunction) => {
@@ -104,6 +111,68 @@ app.post("/keys", async (req: Request, res: Response, next: NextFunction) => {
     }
 });
 
+// -----------------------------
+// New Section: County and State Aggregation Endpoints
+// -----------------------------
+
+// Define the path to the data directory
+const dataDirectory = path.join(__dirname, "../extra_scripts/cached_data");
+
+// Read and cache the JSON files at server startup
+let countyAggregation: any = {};
+let stateAggregation: any = {};
+
+// Function to load JSON files
+const loadAggregationData = () => {
+    try {
+        const countyDataPath = path.join(
+            dataDirectory,
+            "wells_per_county.json"
+        );
+        const stateDataPath = path.join(dataDirectory, "wells_per_state.json");
+
+        const countyData = fs.readFileSync(countyDataPath, "utf8");
+        countyAggregation = JSON.parse(countyData);
+        console.log("Loaded wells_per_county.json successfully.");
+
+        const stateData = fs.readFileSync(stateDataPath, "utf8");
+        stateAggregation = JSON.parse(stateData);
+        console.log("Loaded wells_per_state.json successfully.");
+    } catch (error) {
+        console.error("Error loading aggregation data:", error);
+    }
+};
+
+// Load the data initially
+loadAggregationData();
+
+// Endpoint to get county aggregation data
+app.get("/county-aggregations", (req: Request, res: Response) => {
+    res.json(countyAggregation);
+});
+
+// Endpoint to get state aggregation data
+app.get("/state-aggregations", (req: Request, res: Response) => {
+    res.json(stateAggregation);
+});
+
+// Optionally, watch for changes in the JSON files and reload them
+// This is useful if the JSON files are updated without restarting the server
+fs.watch(dataDirectory, (eventType, filename) => {
+    if (
+        filename &&
+        (filename === "wells_per_county.json" ||
+            filename === "wells_per_state.json")
+    ) {
+        console.log(`Detected change in ${filename}. Reloading data...`);
+        loadAggregationData();
+    }
+});
+
+// -----------------------------
+// Existing Routes and Middleware
+// -----------------------------
+
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     console.error(err);
@@ -112,20 +181,27 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 // Graceful shutdown
 const shutdown = () => {
-    client.quit().then(() => {
-        console.log("Redis client disconnected.");
-        process.exit(0);
-    }).catch((err) => {
-        console.error("Error during Redis client shutdown:", err);
-        process.exit(1);
-    });
+    client
+        .quit()
+        .then(() => {
+            console.log("Redis client disconnected.");
+            process.exit(0);
+        })
+        .catch((err) => {
+            console.error("Error during Redis client shutdown:", err);
+            process.exit(1);
+        });
 };
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 // Define allowed origins (replace with your actual domain)
-const allowedOrigins = ["https://waterwelldepthmap.bren.ucsb.edu/", "http://localhost:3000", "http://localhost:4000"]; 
+const allowedOrigins = [
+    "https://waterwelldepthmap.bren.ucsb.edu/",
+    "http://localhost:3000",
+    "http://localhost:4000",
+];
 
 // Endpoint to handle Google Places Autocomplete API requests
 app.get("/places-autocomplete", async (req: Request, res: Response) => {
@@ -134,7 +210,12 @@ app.get("/places-autocomplete", async (req: Request, res: Response) => {
     // Check the Origin or Referer header
     const origin = req.headers.origin || req.headers.referer;
 
-    if (!origin || !allowedOrigins.some((allowedOrigin) => origin.startsWith(allowedOrigin))) {
+    if (
+        !origin ||
+        !allowedOrigins.some((allowedOrigin) =>
+            origin.startsWith(allowedOrigin)
+        )
+    ) {
         return res.status(403).send("Access denied: Unauthorized origin");
     }
 
@@ -152,7 +233,9 @@ app.get("/places-autocomplete", async (req: Request, res: Response) => {
         if (!response.ok) {
             return res
                 .status(response.status)
-                .send(`Error fetching from Google Places API: ${response.statusText}`);
+                .send(
+                    `Error fetching from Google Places API: ${response.statusText}`
+                );
         }
 
         const data = await response.json();
@@ -170,7 +253,12 @@ app.get("/place-details", async (req: Request, res: Response) => {
     // Check the Origin or Referer header
     const origin = req.headers.origin || req.headers.referer;
 
-    if (!origin || !allowedOrigins.some((allowedOrigin) => origin.startsWith(allowedOrigin))) {
+    if (
+        !origin ||
+        !allowedOrigins.some((allowedOrigin) =>
+            origin.startsWith(allowedOrigin)
+        )
+    ) {
         return res.status(403).send("Access denied: Unauthorized origin");
     }
 
@@ -188,7 +276,9 @@ app.get("/place-details", async (req: Request, res: Response) => {
         if (!response.ok) {
             return res
                 .status(response.status)
-                .send(`Error fetching from Google Places Details API: ${response.statusText}`);
+                .send(
+                    `Error fetching from Google Places Details API: ${response.statusText}`
+                );
         }
 
         const data = await response.json();
@@ -197,14 +287,15 @@ app.get("/place-details", async (req: Request, res: Response) => {
             res.json(data.result);
         } else {
             console.error("Error fetching place details:", data.status);
-            res.status(500).send(`Error fetching place details: ${data.status}`);
+            res.status(500).send(
+                `Error fetching place details: ${data.status}`
+            );
         }
     } catch (error) {
         console.error("Error fetching from Google Places Details API:", error);
         res.status(500).send("Internal server error");
     }
 });
-
 
 // Start the server
 app.listen(port, () => {
