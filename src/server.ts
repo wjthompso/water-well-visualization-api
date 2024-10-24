@@ -13,7 +13,31 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware to enable CORS
-app.use(cors());
+// Define allowed origins (replace with your actual domain)
+const allowedOrigins = [
+    "http://waterwelldepthmap.bren.ucsb.edu/",
+    "https://waterwelldepthmap.bren.ucsb.edu/",
+    "http://localhost:3000",
+    "http://localhost:4000",
+];
+
+// Middleware to enable CORS with specific origins
+app.use(
+    cors({
+        origin: function (origin, callback) {
+            // Allow requests with no origin (e.g., mobile apps, curl requests)
+            if (!origin) return callback(null, true);
+            if (allowedOrigins.indexOf(origin) === -1) {
+                // If the origin isn't allowed, reject the request
+                return callback(new Error("Not allowed by CORS"), false);
+            }
+            return callback(null, true);
+        },
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+        credentials: true, // If you need to allow cookies or credentials
+    })
+);
 
 // Middleware to parse JSON
 app.use(express.json());
@@ -195,13 +219,6 @@ const shutdown = () => {
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
-
-// Define allowed origins (replace with your actual domain)
-const allowedOrigins = [
-    "https://waterwelldepthmap.bren.ucsb.edu/",
-    "http://localhost:3000",
-    "http://localhost:4000",
-];
 
 // Endpoint to handle Google Places Autocomplete API requests
 app.get("/places-autocomplete", async (req: Request, res: Response) => {
