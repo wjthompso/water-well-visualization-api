@@ -22,22 +22,7 @@ const allowedOrigins = [
 ];
 
 // Middleware to enable CORS with specific origins
-app.use(
-    cors({
-        origin: function (origin, callback) {
-            // Allow requests with no origin (e.g., mobile apps, curl requests)
-            if (!origin) return callback(null, true);
-            if (allowedOrigins.indexOf(origin) === -1) {
-                // If the origin isn't allowed, reject the request
-                return callback(new Error("Not allowed by CORS"), false);
-            }
-            return callback(null, true);
-        },
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-        credentials: true, // If you need to allow cookies or credentials
-    })
-);
+app.use(cors());
 
 // Middleware to parse JSON
 app.use(express.json());
