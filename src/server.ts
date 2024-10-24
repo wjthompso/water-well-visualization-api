@@ -20,7 +20,7 @@ app.use(express.json());
 
 // Create a Redis client
 const client = createClient({
-    url: process.env.REDIS_URL || "redis://localhost:6379",
+    url: process.env.REDIS_URL || "redis://localhost:6379/1",
 });
 
 // Handle Redis connection errors
